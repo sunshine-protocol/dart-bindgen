@@ -1,0 +1,17 @@
+[package]
+name = "dart-bindgen"
+version = "0.1.0"
+authors = ["Shady Khalifa <shekohex@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+clang = "0.23"
+
+[[bin]]
+name = "dart-bindgen"
+path = "bin/cli.rs"
+
+[features]
+deafult = []
+cli = []
