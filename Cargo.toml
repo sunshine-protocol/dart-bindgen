@@ -1,8 +1,12 @@
 [package]
 name = "dart-bindgen"
 version = "0.1.0"
-authors = ["Shady Khalifa <shekohex@gmail.com>"]
+authors = ["Sunshine Foundation Developers", "Shady Khalifa <shekohex@gmail.com>"]
 edition = "2018"
+description = "A tool for generating Dart FFI bindings to C Header file."
+repository = "https://github.com/sunshine-protocol/dart-bindgen"
+keywords = ["bindings", "ffi", "code-generation", "dart"]
+categories = ["external-ffi-bindings", "development-tools::ffi"]
 
 
 [dependencies]
@@ -11,6 +15,8 @@ clang = "0.23"
 [[bin]]
 name = "dart-bindgen"
 path = "bin/cli.rs"
+doc = false
+required-features = ["cli"]
 
 [features]
 deafult = []
