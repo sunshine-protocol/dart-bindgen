@@ -1,17 +1,38 @@
-use clang::EntityKind;
+use dart_bindgen::{config::*, Codegen};
 #[test]
 fn test_simple_fn() {
-    let clang = clang::Clang::new().unwrap();
-    let index = clang::Index::new(&clang, true, false);
-    let parser = index.parser("tests/headers/simple_fn.h");
-    let tu = parser.parse().unwrap();
-    let entity = tu.get_entity();
-    let fns = entity.get_children().into_iter().filter(|e| {
-        e.get_kind() == EntityKind::FunctionDecl && !e.is_in_system_header()
-    });
-    for func in fns {
-        println!("Signature: {:?}", func);
-        println!("Name: {:?}", func.get_name());
-        println!("Args: {:#?}", func.get_arguments());
-    }
+    let config = DynamicLibraryConfig {
+        ios: DynamicLibraryCreationMode::Executable.into(),
+        android: DynamicLibraryCreationMode::open("libaddr_ffi.so").into(),
+        windows: DynamicLibraryCreationMode::open("target/addr_ffi.dll").into(),
+        ..Default::default()
+    };
+    Codegen::builder()
+        .with_input_header_path("tests/headers/simple_fn.h")
+        .with_output_dart_file("tests/out/simle_fn.dart")
+        .with_lib_name("libadder")
+        .with_config(config)
+        .build()
+        .unwrap()
+        .generate()
+        .unwrap();
+}
+
+#[test]
+fn test_sqlite3() {
+    let config = DynamicLibraryConfig {
+        ios: DynamicLibraryCreationMode::Executable.into(),
+        android: DynamicLibraryCreationMode::open("libsqlite.so").into(),
+        windows: DynamicLibraryCreationMode::open("target/sqlite.dll").into(),
+        ..Default::default()
+    };
+    Codegen::builder()
+        .with_input_header_path("tests/headers/sqlite3.h")
+        .with_output_dart_file("tests/out/sqlite.dart")
+        .with_lib_name("libsqlite")
+        .with_config(config)
+        .build()
+        .unwrap()
+        .generate()
+        .unwrap();
 }
