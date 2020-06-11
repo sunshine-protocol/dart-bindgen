@@ -12,6 +12,8 @@ categories = ["external-ffi-bindings", "development-tools::ffi"]
 [dependencies]
 clang = "0.23"
 lazy_static = "1.4"
+thiserror = "1.0"
+
 
 [dev-dependencies]
 

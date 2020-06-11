@@ -32,21 +32,18 @@ impl crate::Element for Func {
     #[inline(always)]
     fn documentation(&self) -> Option<&str> { self.documentation.as_deref() }
 
+    // TODO(@shekohex): Split this into smaller functions for readabilty.
     fn generate_source(&self, w: &mut DartSourceWriter) -> io::Result<()> {
         let typedef_c = format!("_{}_C", self.name);
         let typedef_dart = format!("_{}_Dart", self.name);
         w.write_all(b"\n")?;
         if let Some(ref docs) = self.documentation {
             w.write_all(
-                format!(
-                    r#"
-                    ///
-                    /// {}
-                    ///
-                    "#,
-                    docs
-                )
-                .as_bytes(),
+                docs.split('\n')
+                    .map(|c| format!("/// {}", c))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+                    .as_bytes(),
             )?;
         } else {
             w.write_all(
@@ -83,10 +80,10 @@ impl crate::Element for Func {
                 param.name.clone().unwrap_or_else(|| format!("arg{}", i))
             })
             .collect();
-        if w.get_dart_type(&self.name) != "void" {
-            w.write_all(b"  return ")?;
+        if w.get_dart_type(&self.return_ty) != "void" {
+            w.write_all(b"  return")?;
         }
-        w.write_all(format!("_{}(", self.name).as_bytes())?;
+        w.write_all(format!("   _{}(", self.name).as_bytes())?;
         w.write_all(param_names.join(", ").as_bytes())?;
         w.write_all(b");\n")?;
         w.write_all(b"}\n")?;
@@ -162,6 +159,12 @@ pub(crate) struct Param {
     ty: String,
 }
 
+impl Param {
+    pub(crate) const fn new(name: Option<String>, ty: String) -> Self {
+        Self { name, ty }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,6 +201,46 @@ mod tests {
                 name: Some("a".to_owned()),
                 ty: "int64_t".to_owned(),
             }],
+            "void".to_owned(),
+        );
+        func.generate_source(&mut dsw).unwrap();
+        println!("{}", dsw.to_string());
+    }
+
+    #[test]
+    fn test_func_with_docs() {
+        let mut dsw = get_dsw!();
+
+        let func = Func::new(
+            "simple3".to_owned(),
+            Some("Comment".to_string()),
+            vec![Param {
+                name: Some("a".to_owned()),
+                ty: "int64_t".to_owned(),
+            }],
+            "void".to_owned(),
+        );
+        func.generate_source(&mut dsw).unwrap();
+        println!("{}", dsw.to_string());
+    }
+
+    #[test]
+    fn test_func_with_unnamed_args() {
+        let mut dsw = get_dsw!();
+
+        let func = Func::new(
+            "simple4".to_owned(),
+            None,
+            vec![
+                Param {
+                    name: None,
+                    ty: "int64_t".to_owned(),
+                },
+                Param {
+                    name: None,
+                    ty: "int64_t".to_owned(),
+                },
+            ],
             "void".to_owned(),
         );
         func.generate_source(&mut dsw).unwrap();

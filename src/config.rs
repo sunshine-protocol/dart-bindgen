@@ -1,9 +1,16 @@
+use fmt::Display;
+use std::fmt;
+
 /// Represents the different methods to create a `DynamicLibrary`.
 #[derive(Debug, Clone)]
 pub enum DynamicLibraryCreationMode {
     Executable,
     Open(String),
     Process,
+}
+
+impl DynamicLibraryCreationMode {
+    pub fn open(path: impl Into<String>) -> Self { Self::Open(path.into()) }
 }
 
 /// Configures how a `DynamicLibrary` should be created on a platform.
@@ -23,17 +30,23 @@ impl DynamicLibraryPlatformConfig {
     }
 }
 
-impl ToString for DynamicLibraryPlatformConfig {
-    fn to_string(&self) -> String {
+impl From<DynamicLibraryCreationMode> for Option<DynamicLibraryPlatformConfig> {
+    fn from(mode: DynamicLibraryCreationMode) -> Self {
+        Some(DynamicLibraryPlatformConfig::new(mode))
+    }
+}
+
+impl Display for DynamicLibraryPlatformConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.creation_mode {
             DynamicLibraryCreationMode::Executable => {
-                String::from("DynamicLibrary.executable()")
+                write!(f, "DynamicLibrary.executable()")
             },
             DynamicLibraryCreationMode::Open(ref path) => {
-                format!("DynamicLibrary.open({})", path)
+                write!(f, "DynamicLibrary.open('{}')", path)
             },
             DynamicLibraryCreationMode::Process => {
-                String::from("DynamicLibrary.process()")
+                write!(f, "DynamicLibrary.process()")
             },
         }
     }
@@ -41,11 +54,7 @@ impl ToString for DynamicLibraryPlatformConfig {
 
 /// Defines, how the dynamic library should be loaded on each of darts known
 /// platforms.
-///
-/// If the `DynamicLibraryPlatformConfig` is `None` for a platform, this
-/// platform will fallback to `default`, except for `iOS` it is default to use
-/// [`DynamicLibraryCreationMode::Executable`]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DynamicLibraryConfig {
     pub windows: Option<DynamicLibraryPlatformConfig>,
     pub linux: Option<DynamicLibraryPlatformConfig>,
@@ -53,21 +62,4 @@ pub struct DynamicLibraryConfig {
     pub ios: Option<DynamicLibraryPlatformConfig>,
     pub android: Option<DynamicLibraryPlatformConfig>,
     pub fuchsia: Option<DynamicLibraryPlatformConfig>,
-    default: DynamicLibraryPlatformConfig,
-}
-
-impl DynamicLibraryConfig {
-    pub fn new(default: DynamicLibraryPlatformConfig) -> Self {
-        Self {
-            windows: Some(default.clone()),
-            linux: Some(default.clone()),
-            macos: Some(default.clone()),
-            ios: Some(DynamicLibraryPlatformConfig::new(
-                DynamicLibraryCreationMode::Executable,
-            )),
-            android: Some(default.clone()),
-            fuchsia: Some(default.clone()),
-            default,
-        }
-    }
 }

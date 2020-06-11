@@ -1,9 +1,11 @@
 use lazy_static::lazy_static;
 use std::{
     collections::{HashMap, HashSet},
+    fmt::{self, Display},
     io::{self, ErrorKind, Write},
     str,
 };
+
 /// Describes an imported Dart package.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ImportedUri {
@@ -59,7 +61,28 @@ lazy_static! {
     pub(crate) static ref FFI_TYPES_MAP: HashMap<&'static str, DartType> = {
         let mut map = HashMap::new();
         map.insert("int64_t", DartType::new("ffi.Int64", "int"));
-        map.insert("void", DartType::new("ffi.Void", "void"));
+        map.insert("*void", DartType::new("ffi.Pointer","ffi.Pointer"));
+        map.insert("void", DartType::new("ffi.Void","void"));
+        map.insert("*utf8", DartType::new("ffi.Pointer<ffi.Utf8>", "ffi.Pointer<ffi.Utf8>"));
+        map.insert("*utf16", DartType::new("ffi.Pointer<ffi.Utf16>", "ffi.Pointer<ffi.Utf16>"));
+        map.insert("intptr", DartType::new("ffi.IntPtr","int"));
+
+        // For convenience
+        map.insert("size_t", DartType::new("ffi.IntPtr","int"));
+
+        map.insert("char", DartType::new("ffi.Uint8","int"));
+        map.insert("int8", DartType::new("ffi.Int8","int"));
+        map.insert("int16", DartType::new("ffi.Int16","int"));
+        map.insert("int32", DartType::new("ffi.Int32","int"));
+        map.insert("int64", DartType::new("ffi.Int64","int"));
+        map.insert("uint8", DartType::new("ffi.Uint8","int"));
+        map.insert("uint16", DartType::new("ffi.Uint16","int"));
+        map.insert("uint32", DartType::new("ffi.Uint32","int"));
+        map.insert("uint64", DartType::new("ffi.Uint64","int"));
+        map.insert("float", DartType::new("ffi.Float","double"));
+        map.insert("double", DartType::new("ffi.Double","double"));
+        map.insert("float32", DartType::new("ffi.Float","double"));
+        map.insert("float64", DartType::new("ffi.Double","double"));
         map
     };
 }
@@ -90,15 +113,26 @@ impl DartSourceWriter {
     /// * `*void` -> `Pointer`
     /// * `void` -> `Void`
     pub(crate) fn get_ctype(&self, name: &str) -> String {
-        let ty = FFI_TYPES_MAP.get(name.to_lowercase().as_str());
+        let mut n = name
+            .trim()
+            .replace("const", "")
+            .replace("struct", "")
+            .replace("unsigned", "")
+            .to_lowercase();
+        let ty = FFI_TYPES_MAP.get(n.as_str());
         if let Some(cty) = ty {
-            cty.ffi().to_owned()
-        } else if name.starts_with('*') {
-            // skip the `*`
-            format!("ffi.Pointer<{}>", &name[1..])
-        } else {
-            name.to_owned()
+            return cty.ffi().to_owned();
         }
+
+        if n.starts_with('*') {
+            // skip the `*`
+            return format!("ffi.Pointer<{}>", self.get_ctype(&n[1..]));
+        }
+        if n.ends_with('*') {
+            n.pop();
+            return format!("ffi.Pointer<{}>", self.get_ctype(&n));
+        }
+        n
     }
 
     /// Converts description type to Dart type.
@@ -108,15 +142,26 @@ impl DartSourceWriter {
     /// * `Int64` -> `int`
     /// * `*CFString` -> `Pointer<CFString>`
     pub(crate) fn get_dart_type(&self, name: &str) -> String {
-        let ty = FFI_TYPES_MAP.get(name.to_lowercase().as_str());
+        let mut n = name
+            .trim()
+            .replace("struct", "")
+            .replace("const", "")
+            .replace("unsigned", "")
+            .to_lowercase();
+        let ty = FFI_TYPES_MAP.get(n.as_str());
         if let Some(cty) = ty {
-            cty.dart().to_owned()
-        } else if name.starts_with('*') {
-            // skip the `*`
-            format!("ffi.Pointer<{}>", &name[1..])
-        } else {
-            name.to_owned()
+            return cty.dart().to_owned();
         }
+
+        if n.starts_with('*') {
+            // skip the `*`
+            return format!("ffi.Pointer<{}>", self.get_dart_type(&n[1..]));
+        }
+        if n.ends_with('*') {
+            n.pop();
+            return format!("ffi.Pointer<{}>", self.get_dart_type(&n));
+        }
+        n
     }
 
     /// Returns Dart C type for the description type.
@@ -153,20 +198,19 @@ impl Write for DartSourceWriter {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-impl ToString for DartSourceWriter {
-    fn to_string(&self) -> String {
-        let mut sb = String::new();
+impl Display for DartSourceWriter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for import in &self.imports {
-            sb = sb + &format!("import '{}'", import.uri);
+            write!(f, "import '{}'", import.uri)?;
             if let Some(ref prefix) = import.prefix {
-                sb = sb + &format!(" as {}", prefix);
+                write!(f, " as {}", prefix)?;
             }
             // TODO(@shekohex): support `show` and `hide`
-            sb.push_str(";\n");
+            writeln!(f, ";")?;
         }
-        sb.push('\n');
+        writeln!(f)?;
         // content
-        sb = sb + &self.sb;
-        sb
+        write!(f, "{}", self.sb)?;
+        Ok(())
     }
 }
