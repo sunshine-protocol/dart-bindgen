@@ -13,10 +13,10 @@ categories = ["external-ffi-bindings", "development-tools::ffi"]
 clang = "0.23"
 lazy_static = "1.4"
 thiserror = "1.0"
-
+log = "0.4"
 
 [dev-dependencies]
-
+simplelog = "0.8"
 
 [[bin]]
 name = "dart-bindgen"

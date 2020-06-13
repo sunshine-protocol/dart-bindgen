@@ -13,7 +13,8 @@
 1. be able to generate a single `ffi.dart` file that should contain all the C header bindings.
 2. Current Supported C Features
 
-- [ ] Functions
+- [x] Functions
+- [x] Function Pointer (aka Callbacks)
 - [ ] Simple Structs
 - [ ] Type Defintions
 - [ ] Enums

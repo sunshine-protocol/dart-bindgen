@@ -18,6 +18,8 @@ pub enum CodegenError {
     UnknownFunctionReturnType,
     #[error("Unknown Param type for param `a` at ")]
     UnknownParamType,
+    #[error("Unknown Pointee type for param `a` at ")]
+    UnknownPointeeType,
 }
 
 impl From<String> for CodegenError {

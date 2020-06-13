@@ -9,7 +9,8 @@
     intra_doc_link_resolution_failure
 )]
 
-use clang::{Clang, Entity, EntityKind, Index};
+use clang::{Clang, Entity, EntityKind, Index, Type, TypeKind};
+use log::debug;
 use std::{
     fmt, fs,
     io::{self, Write},
@@ -52,12 +53,20 @@ impl Codegen {
     pub fn builder() -> CodegenBuilder { CodegenBuilder::default() }
 
     pub fn generate(mut self) -> Result<(), CodegenError> {
-        let mut dsw = Self::get_dsw();
+        debug!("Starting Codegen!");
+        debug!("Building dsw");
+        let mut dsw = Self::build_dsw();
+        debug!("dsw is ready");
         self.generate_open_dl(&mut dsw)?;
         let clang = Clang::new()?;
         let index = Index::new(&clang, true, false);
+        debug!(
+            "start parsing the C header file at {:?}.",
+            self.input_header
+        );
         let parser = index.parser(self.input_header);
         let tu = parser.parse()?;
+        debug!("Done Parsed the header file");
         let entity = tu.get_entity();
         let entities = entity
             .get_children()
@@ -65,12 +74,14 @@ impl Codegen {
             .filter(|e| !e.is_in_system_header());
         for e in entities {
             if e.get_kind() == EntityKind::FunctionDecl {
+                debug!("Got Function: {:?}", e);
                 // handle functions
                 let func = Self::parse_function(e)?;
+                debug!("Parsed Function: {:?}", func);
                 self.elements.push(Box::new(func));
             }
         }
-
+        debug!("Generating Dart Source...");
         for el in self.elements {
             el.generate_source(&mut dsw)?;
         }
@@ -81,9 +92,9 @@ impl Codegen {
             .truncate(true)
             .create(true)
             .open(self.output_file)?;
-
+        debug!("Writing Dart Source File...");
         write!(out, "{}", dsw)?;
-
+        debug!("Done.");
         Ok(())
     }
 
@@ -91,24 +102,31 @@ impl Codegen {
         &self,
         dsw: &mut DartSourceWriter,
     ) -> Result<(), CodegenError> {
+        debug!("Generating Code for opening DynamicLibrary");
         writeln!(dsw, "final DynamicLibrary _dl = _open();")?;
         writeln!(dsw, "DynamicLibrary _open() {{")?;
         if let Some(ref config) = self.config.windows {
+            debug!("Generating _open Code for Windows");
             writeln!(dsw, "  if (Platform.isWindows) return {};", config)?;
         }
         if let Some(ref config) = self.config.linux {
+            debug!("Generating _open Code for Linux");
             writeln!(dsw, "  if (Platform.isLinux) return {};", config)?;
         }
         if let Some(ref config) = self.config.android {
+            debug!("Generating _open Code for Android");
             writeln!(dsw, "  if (Platform.isAndroid) return {};", config)?;
         }
         if let Some(ref config) = self.config.ios {
+            debug!("Generating _open Code for iOS");
             writeln!(dsw, "  if (Platform.isIOS) return {};", config)?;
         }
         if let Some(ref config) = self.config.macos {
+            debug!("Generating _open Code for macOS");
             writeln!(dsw, "  if (Platform.isMacOS) return {};", config)?;
         }
         if let Some(ref config) = self.config.fuchsia {
+            debug!("Generating _open Code for Fuchsia");
             writeln!(dsw, "  if (Platform.isFuchsia) return {};", config)?;
         }
         writeln!(
@@ -116,6 +134,7 @@ impl Codegen {
             "  throw UnsupportedError('This platform is not supported.');"
         )?;
         writeln!(dsw, "}}")?;
+        debug!("Generating Code for opening DynamicLibrary done.");
         Ok(())
     }
 
@@ -123,16 +142,20 @@ impl Codegen {
         let name = entity
             .get_name()
             .ok_or_else(|| CodegenError::UnnamedFunction)?;
+        debug!("Function: {}", name);
         let params = match entity.get_arguments() {
             Some(entities) => Self::parse_fn_params(entities)?,
             None => Vec::new(),
         };
+        debug!("Function Params: {:?}", params);
         let docs = entity.get_parsed_comment().map(|c| c.as_html());
+        debug!("Function Docs: {:?}", docs);
         let return_ty = entity
             .get_result_type()
             .ok_or_else(|| CodegenError::UnknownFunctionReturnType)?
             .get_canonical_type()
             .get_display_name();
+        debug!("Function Return Type: {}", return_ty);
         Ok(Func::new(name, docs, params, return_ty))
     }
 
@@ -141,18 +164,62 @@ impl Codegen {
     ) -> Result<Vec<Param>, CodegenError> {
         let mut params = Vec::with_capacity(entities.capacity());
         for e in entities {
+            debug!("Param: {:?}", e);
             let name = e.get_name();
+            debug!("Param Name: {:?}", name);
             let ty = e
                 .get_type()
                 .ok_or_else(|| CodegenError::UnknownParamType)?
-                .get_canonical_type()
-                .get_display_name();
+                .get_canonical_type();
+            debug!("Param Type: {:?}", ty);
+            let ty = if ty.get_kind() == TypeKind::Pointer {
+                let pointee_type = ty
+                    .get_pointee_type()
+                    .ok_or_else(|| CodegenError::UnknownPointeeType)?;
+                let kind = pointee_type.get_kind();
+                if kind == TypeKind::FunctionPrototype
+                    || kind == TypeKind::FunctionNoPrototype
+                {
+                    Self::parse_fn_proto(pointee_type)?
+                } else {
+                    ty.get_display_name()
+                }
+            } else {
+                ty.get_display_name()
+            };
+            debug!("Param Type Display Name: {}", ty);
             params.push(Param::new(name, ty));
         }
         Ok(params)
     }
 
-    fn get_dsw() -> DartSourceWriter {
+    fn parse_fn_proto(ty: Type<'_>) -> Result<String, CodegenError> {
+        let mut dsw = DartSourceWriter::new();
+        debug!("Function Proto: {:?}", ty);
+        let return_ty = ty
+            .get_canonical_type()
+            .get_result_type()
+            .ok_or_else(|| CodegenError::UnknownFunctionReturnType)?
+            .get_canonical_type()
+            .get_display_name();
+        let params = match ty.get_argument_types() {
+            Some(arg_ty) => arg_ty
+                .iter()
+                .map(|ty| ty.get_display_name())
+                .map(|ty| dsw.get_ctype(&ty))
+                .collect(),
+            None => Vec::new(),
+        };
+        write!(
+            dsw,
+            "Pointer<NativeFunction<{} Function({})>>",
+            dsw.get_dart_type(&return_ty),
+            params.join(", ")
+        )?;
+        Ok(dsw.to_string())
+    }
+
+    fn build_dsw() -> DartSourceWriter {
         let mut dsw = DartSourceWriter::new();
         dsw.import(ImportedUri::new(String::from("dart:ffi")));
         dsw.import(ImportedUri::new(String::from("dart:io")));

@@ -1,6 +1,21 @@
 use dart_bindgen::{config::*, Codegen};
+use log::LevelFilter;
+use simplelog::{TermLogger, TerminalMode};
+
+macro_rules! setup_logger {
+    () => {
+        TermLogger::init(
+            LevelFilter::Debug,
+            Default::default(),
+            TerminalMode::Mixed,
+        )
+        .unwrap();
+    };
+}
+
 #[test]
 fn test_simple_fn() {
+    setup_logger!();
     let config = DynamicLibraryConfig {
         ios: DynamicLibraryCreationMode::Executable.into(),
         android: DynamicLibraryCreationMode::open("libaddr_ffi.so").into(),
@@ -20,6 +35,7 @@ fn test_simple_fn() {
 
 #[test]
 fn test_sqlite3() {
+    setup_logger!();
     let config = DynamicLibraryConfig {
         ios: DynamicLibraryCreationMode::Executable.into(),
         android: DynamicLibraryCreationMode::open("libsqlite.so").into(),
