@@ -17,7 +17,6 @@
 - [x] Function Pointer (aka Callbacks)
 - [x] Simple Structs
 - [ ] Enums
-- [ ] `#DEFINE X Y`
 
 ## Non-Goals
 

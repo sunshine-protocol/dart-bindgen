@@ -113,9 +113,9 @@ impl DartSourceWriter {
     pub(crate) fn get_ctype(&self, name: &str) -> String {
         let mut n = name
             .trim()
-            .replace("const", "")
-            .replace("volatile", "")
-            .replace("struct", "");
+            .replace("const ", "")
+            .replace("volatile ", "")
+            .replace("struct ", "");
         let ty = FFI_TYPES_MAP.get(n.to_lowercase().as_str());
         if let Some(cty) = ty {
             cty.ffi().to_owned()
@@ -142,9 +142,9 @@ impl DartSourceWriter {
     pub(crate) fn get_dart_type(&self, name: &str) -> String {
         let mut n = name
             .trim()
-            .replace("struct", "")
-            .replace("volatile", "")
-            .replace("const", "");
+            .replace("struct ", "")
+            .replace("volatile ", "")
+            .replace("const ", "");
         let ty = FFI_TYPES_MAP.get(n.to_lowercase().as_str());
         if let Some(cty) = ty {
             cty.dart().to_owned()
@@ -176,9 +176,9 @@ impl DartSourceWriter {
     ) -> Option<String> {
         let n = name
             .trim()
-            .replace("struct", "")
-            .replace("volatile", "")
-            .replace("const", "");
+            .replace("struct ", "")
+            .replace("volatile ", "")
+            .replace("const ", "");
         if n.ends_with('*') {
             None
         } else if let Some(ty) = FFI_TYPES_MAP.get(n.to_lowercase().as_str()) {
