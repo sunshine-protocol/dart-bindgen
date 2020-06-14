@@ -12,6 +12,7 @@
 use clang::{Clang, Entity, EntityKind, Index, Type, TypeKind};
 use log::debug;
 use std::{
+    collections::HashMap,
     fmt, fs,
     io::{self, Write},
     path::PathBuf,
@@ -25,6 +26,9 @@ use dart_source_writer::{DartSourceWriter, ImportedUri};
 
 mod errors;
 use errors::CodegenError;
+
+mod structure;
+use structure::{Field, Struct};
 
 mod func;
 use func::{Func, Param};
@@ -46,7 +50,7 @@ pub struct Codegen {
     input_header: PathBuf,
     lib_name: String,
     config: DynamicLibraryConfig,
-    elements: Vec<Box<dyn Element>>,
+    elements: HashMap<String, Box<dyn Element>>,
 }
 
 impl Codegen {
@@ -73,16 +77,22 @@ impl Codegen {
             .into_iter()
             .filter(|e| !e.is_in_system_header());
         for e in entities {
-            if e.get_kind() == EntityKind::FunctionDecl {
+            let kind = e.get_kind();
+            if kind == EntityKind::FunctionDecl {
                 debug!("Got Function: {:?}", e);
                 // handle functions
                 let func = Self::parse_function(e)?;
-                debug!("Parsed Function: {:?}", func);
-                self.elements.push(Box::new(func));
+                self.elements.insert(func.name().to_owned(), Box::new(func));
+            }
+
+            if kind == EntityKind::StructDecl {
+                debug!("Got Struct: {:?}", e);
+                let s = Self::parse_struct(e)?;
+                self.elements.insert(s.name().to_owned(), Box::new(s));
             }
         }
         debug!("Generating Dart Source...");
-        for el in self.elements {
+        for el in self.elements.values() {
             el.generate_source(&mut dsw)?;
         }
 
@@ -138,7 +148,9 @@ impl Codegen {
         Ok(())
     }
 
-    fn parse_function(entity: Entity<'_>) -> Result<Func, CodegenError> {
+    fn parse_function(
+        entity: Entity<'_>,
+    ) -> Result<impl Element, CodegenError> {
         let name = entity
             .get_name()
             .ok_or_else(|| CodegenError::UnnamedFunction)?;
@@ -219,8 +231,47 @@ impl Codegen {
         Ok(dsw.to_string())
     }
 
+    fn parse_struct(entity: Entity<'_>) -> Result<impl Element, CodegenError> {
+        let name = entity
+            .get_name()
+            .ok_or_else(|| CodegenError::UnnamedStruct)?;
+        debug!("Struct: {}", name);
+        let children = entity.get_children();
+        let mut fields = Vec::with_capacity(children.capacity());
+
+        for child in children {
+            let name = child
+                .get_name()
+                .ok_or_else(|| CodegenError::UnnamedStructField)?;
+            let ty = child
+                .get_type()
+                .ok_or_else(|| CodegenError::UnknownParamType)?
+                .get_canonical_type();
+            let ty = if ty.get_kind() == TypeKind::Pointer {
+                let pointee_type = ty
+                    .get_pointee_type()
+                    .ok_or_else(|| CodegenError::UnknownPointeeType)?;
+                let kind = pointee_type.get_kind();
+                if kind == TypeKind::FunctionPrototype
+                    || kind == TypeKind::FunctionNoPrototype
+                {
+                    Self::parse_fn_proto(pointee_type)?
+                } else {
+                    ty.get_display_name()
+                }
+            } else {
+                ty.get_display_name()
+            };
+            fields.push(Field::new(name, ty));
+        }
+        let docs = entity.get_parsed_comment().map(|c| c.as_html());
+        Ok(Struct::new(name, docs, fields))
+    }
+
     fn build_dsw() -> DartSourceWriter {
         let mut dsw = DartSourceWriter::new();
+        // disable some lints
+        writeln!(dsw, "// ignore_for_file: unused_import, camel_case_types, non_constant_identifier_names").unwrap();
         dsw.import(ImportedUri::new(String::from("dart:ffi")));
         dsw.import(ImportedUri::new(String::from("dart:io")));
         let mut ffi = ImportedUri::new(String::from("package:ffi/ffi.dart"));
@@ -236,6 +287,7 @@ impl fmt::Debug for Codegen {
             .field("output_file", &self.output_file)
             .field("input_file", &self.input_header)
             .field("lib_name", &self.lib_name)
+            .field("config", &self.config)
             .finish()
     }
 }
@@ -264,7 +316,7 @@ impl CodegenBuilder {
             input_header: self.input_header,
             lib_name: self.lib_name,
             config,
-            elements: Vec::new(),
+            elements: HashMap::new(),
         })
     }
 

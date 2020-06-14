@@ -11,32 +11,13 @@ use std::{
 pub(crate) struct ImportedUri {
     uri: String,
     prefix: Option<String>,
-    show: Option<String>,
-    hide: Option<String>,
 }
 
 impl ImportedUri {
-    pub(crate) const fn new(uri: String) -> Self {
-        Self {
-            uri,
-            prefix: None,
-            show: None,
-            hide: None,
-        }
-    }
+    pub(crate) const fn new(uri: String) -> Self { Self { uri, prefix: None } }
 
     pub(crate) fn with_prefix(&mut self, prefix: String) -> &Self {
         self.prefix = Some(prefix);
-        self
-    }
-
-    pub(crate) fn with_show(&mut self, show: String) -> &Self {
-        self.show = Some(show);
-        self
-    }
-
-    pub(crate) fn with_hide(&mut self, hide: String) -> &Self {
-        self.hide = Some(hide);
         self
     }
 }
@@ -60,17 +41,13 @@ impl DartType {
 lazy_static! {
     pub(crate) static ref FFI_TYPES_MAP: HashMap<&'static str, DartType> = {
         let mut map = HashMap::new();
-        map.insert("*void", DartType::new("Pointer", "Pointer"));
+        map.insert("void *", DartType::new("Pointer", "Pointer"));
         map.insert("void", DartType::new("Void", "void"));
-        map.insert(
-            "*char",
-            DartType::new("Pointer<ffi.Utf8>", "Pointer<ffi.Utf8>"),
-        );
+
         map.insert(
             "char *",
             DartType::new("Pointer<ffi.Utf8>", "Pointer<ffi.Utf8>"),
         );
-
         map.insert("char", DartType::new("Uint8", "int"));
         map.insert("unsigned char", DartType::new("Uint8", "int"));
         map.insert("signed char", DartType::new("Int8", "int"));
@@ -134,15 +111,15 @@ impl DartSourceWriter {
     /// * `*void` -> `Pointer`
     /// * `void` -> `Void`
     pub(crate) fn get_ctype(&self, name: &str) -> String {
-        let mut n = name.trim().replace("const", "").replace("struct", "");
+        let mut n = name
+            .trim()
+            .replace("const", "")
+            .replace("volatile", "")
+            .replace("struct", "");
         let ty = FFI_TYPES_MAP.get(n.to_lowercase().as_str());
         if let Some(cty) = ty {
             cty.ffi().to_owned()
         } else {
-            if n.starts_with('*') {
-                // skip the `*`
-                return format!("Pointer<{}>", self.get_ctype(&n[1..]));
-            }
             if n.ends_with('*') {
                 n.pop();
                 return format!("Pointer<{}>", self.get_ctype(&n));
@@ -163,15 +140,15 @@ impl DartSourceWriter {
     /// * `Int64` -> `int`
     /// * `*CFString` -> `Pointer<CFString>`
     pub(crate) fn get_dart_type(&self, name: &str) -> String {
-        let mut n = name.trim().replace("struct", "").replace("const", "");
+        let mut n = name
+            .trim()
+            .replace("struct", "")
+            .replace("volatile", "")
+            .replace("const", "");
         let ty = FFI_TYPES_MAP.get(n.to_lowercase().as_str());
         if let Some(cty) = ty {
             cty.dart().to_owned()
         } else {
-            if n.starts_with('*') {
-                // skip the `*`
-                return format!("Pointer<{}>", self.get_ctype(&n[1..]));
-            }
             if n.ends_with('*') {
                 n.pop();
                 return format!("Pointer<{}>", self.get_ctype(&n));
@@ -197,10 +174,14 @@ impl DartSourceWriter {
         &self,
         name: &str,
     ) -> Option<String> {
-        if name.starts_with('*') {
-            Some("ffi.Pointer".to_owned())
-        } else if let Some(ty) = FFI_TYPES_MAP.get(name.to_lowercase().as_str())
-        {
+        let n = name
+            .trim()
+            .replace("struct", "")
+            .replace("volatile", "")
+            .replace("const", "");
+        if n.ends_with('*') {
+            None
+        } else if let Some(ty) = FFI_TYPES_MAP.get(n.to_lowercase().as_str()) {
             Some(ty.ffi().to_owned())
         } else {
             None

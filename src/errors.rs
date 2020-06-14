@@ -20,6 +20,12 @@ pub enum CodegenError {
     UnknownParamType,
     #[error("Unknown Pointee type for param `a` at ")]
     UnknownPointeeType,
+    #[error("Found Struct without name at ")]
+    UnnamedStruct,
+    #[error("Unknown name of struct field `a` at ")]
+    UnnamedStructField,
+    #[error("Unknown type for struct field `a` at ")]
+    UnknownStructFieldType,
 }
 
 impl From<String> for CodegenError {

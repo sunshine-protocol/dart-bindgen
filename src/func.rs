@@ -36,42 +36,32 @@ impl crate::Element for Func {
     fn generate_source(&self, w: &mut DartSourceWriter) -> io::Result<()> {
         let typedef_c = format!("_{}_C", self.name);
         let typedef_dart = format!("_{}_Dart", self.name);
-        w.write_all(b"\n")?;
+        writeln!(w)?;
         if let Some(ref docs) = self.documentation {
-            w.write_all(
-                docs.split('\n')
-                    .map(|c| format!("/// {}", c))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-                    .as_bytes(),
-            )?;
+            let docs = docs
+                .split('\n')
+                .map(|c| format!("/// {}", c))
+                .collect::<Vec<_>>()
+                .join("\n");
+            writeln!(w, "{}", docs)?;
         } else {
-            w.write_all(
-                format!("/// C function `{}`.\n", self.name).as_bytes(),
-            )?;
+            writeln!(w, "/// C function `{}`.", self.name)?;
         }
-
-        w.write_all(b"\n")?;
-        w.write_all(
-            format!("{} {}(", w.get_dart_type(&self.return_ty), self.name)
-                .as_bytes(),
-        )?;
+        write!(w, "{} {}(", w.get_dart_type(&self.return_ty), self.name)?;
 
         if !self.params.is_empty() {
-            w.write_all(b"\n")?;
+            writeln!(w)?;
         }
 
         for (i, param) in self.params.iter().enumerate() {
-            w.write_all(
-                format!(
-                    "  {} {},\n",
-                    w.get_dart_type(&param.ty),
-                    param.name.clone().unwrap_or_else(|| format!("arg{}", i))
-                )
-                .as_bytes(),
+            writeln!(
+                w,
+                "  {} {},",
+                w.get_dart_type(&param.ty),
+                param.name.clone().unwrap_or_else(|| format!("arg{}", i))
             )?;
         }
-        w.write_all(b") {\n")?;
+        writeln!(w, ") {{")?;
         let param_names: Vec<_> = self
             .params
             .iter()
@@ -81,73 +71,62 @@ impl crate::Element for Func {
             })
             .collect();
         if w.get_dart_type(&self.return_ty) != "void" {
-            w.write_all(b"  return")?;
+            write!(w, "  return")?;
+        } else {
+            write!(w, " ")?;
         }
-        w.write_all(format!("   _{}(", self.name).as_bytes())?;
-        w.write_all(param_names.join(", ").as_bytes())?;
-        w.write_all(b");\n")?;
-        w.write_all(b"}\n")?;
-        w.write_all(
-            format!("final {} _{} = ", typedef_dart, self.name).as_bytes(),
+        write!(w, " _{}(", self.name)?;
+        write!(w, "{}", param_names.join(", "))?;
+        writeln!(w, ");")?;
+        writeln!(w, "}}")?;
+        write!(w, "final {} _{} = ", typedef_dart, self.name)?;
+
+        writeln!(
+            w,
+            "_dl.lookupFunction<{}, {}>('{}');",
+            typedef_c, typedef_dart, self.name
         )?;
 
-        w.write_all(
-            format!(
-                "_dl.lookupFunction<{}, {}>('{}');\n",
-                typedef_c, typedef_dart, self.name
-            )
-            .as_bytes(),
-        )?;
-
-        w.write_all(
-            format!(
-                "typedef {} = {} Function(",
-                typedef_c,
-                w.get_ctype(&self.return_ty)
-            )
-            .as_bytes(),
+        write!(
+            w,
+            "typedef {} = {} Function(",
+            typedef_c,
+            w.get_ctype(&self.return_ty)
         )?;
 
         if !self.params.is_empty() {
-            w.write_all(b"\n")?;
+            writeln!(w)?;
         }
 
         for (i, param) in self.params.iter().enumerate() {
-            w.write_all(
-                format!(
-                    "  {} {},\n",
-                    w.get_ctype(&param.ty),
-                    param.name.clone().unwrap_or_else(|| format!("arg{}", i))
-                )
-                .as_bytes(),
+            writeln!(
+                w,
+                "  {} {},",
+                w.get_ctype(&param.ty),
+                param.name.clone().unwrap_or_else(|| format!("arg{}", i))
             )?;
         }
-        w.write_all(b");\n")?;
-
-        w.write_all(
-            format!(
-                "typedef {} = {} Function(",
-                typedef_dart,
-                w.get_dart_type(&self.return_ty)
-            )
-            .as_bytes(),
+        writeln!(w, ");")?;
+        write!(
+            w,
+            "typedef {} = {} Function(",
+            typedef_dart,
+            w.get_dart_type(&self.return_ty)
         )?;
 
         if !self.params.is_empty() {
-            w.write_all(b"\n")?;
+            writeln!(w)?;
         }
 
         for (i, param) in self.params.iter().enumerate() {
-            w.write_all(
-                format!(
-                    "  {} {},\n",
-                    w.get_dart_type(&param.ty),
-                    param.name.clone().unwrap_or_else(|| format!("arg{}", i))
-                )
-                .as_bytes(),
+            writeln!(
+                w,
+                "  {} {},",
+                w.get_dart_type(&param.ty),
+                param.name.clone().unwrap_or_else(|| format!("arg{}", i))
             )?;
         }
-        w.write_all(b");\n")?;
+        writeln!(w, ");")?;
 
         Ok(())
     }

@@ -15,8 +15,7 @@
 
 - [x] Functions
 - [x] Function Pointer (aka Callbacks)
-- [ ] Simple Structs
-- [ ] Type Defintions
+- [x] Simple Structs
 - [ ] Enums
 - [ ] `#DEFINE X Y`
 
