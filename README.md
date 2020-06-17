@@ -15,8 +15,7 @@
 
 - [x] Functions
 - [x] Function Pointer (aka Callbacks)
-- [x] Simple Structs
-- [ ] Enums
+- [x] Simple Structs (NOTE: Nested structs is not supported yet, open a PR?)
 
 ## Non-Goals
 

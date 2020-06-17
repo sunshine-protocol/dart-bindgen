@@ -1,4 +1,3 @@
-use lazy_static::lazy_static;
 use std::{
     collections::{HashMap, HashSet},
     fmt::{self, Display},
@@ -38,8 +37,16 @@ impl DartType {
     pub(crate) const fn dart(&self) -> &str { self.dart }
 }
 
-lazy_static! {
-    pub(crate) static ref FFI_TYPES_MAP: HashMap<&'static str, DartType> = {
+#[derive(Clone, Debug)]
+pub(crate) struct DartSourceWriter {
+    ffi_types_map: HashMap<&'static str, DartType>,
+    imports: HashSet<ImportedUri>,
+    lib_name: String,
+    sb: String,
+}
+
+impl DartSourceWriter {
+    pub(crate) fn new() -> Self {
         let mut map = HashMap::new();
         map.insert("void *", DartType::new("Pointer", "Pointer"));
         map.insert("void", DartType::new("Void", "void"));
@@ -81,26 +88,20 @@ lazy_static! {
         map.insert("float", DartType::new("Float", "double"));
         map.insert("double", DartType::new("Double", "double"));
         map.insert("long double", DartType::new("Double", "double"));
-        map
-    };
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct DartSourceWriter {
-    imports: HashSet<ImportedUri>,
-    sb: String,
-}
-
-impl DartSourceWriter {
-    pub(crate) fn new() -> Self {
         Self {
             imports: HashSet::new(),
             sb: String::new(),
+            lib_name: String::new(),
+            ffi_types_map: map,
         }
     }
 
     pub(crate) fn import(&mut self, imported_uri: ImportedUri) {
         self.imports.insert(imported_uri);
+    }
+
+    pub(crate) fn set_lib_name(&mut self, lib_name: &str) {
+        self.lib_name = lib_name.to_owned();
     }
 
     /// Returns Dart C type for the description type.
@@ -111,12 +112,8 @@ impl DartSourceWriter {
     /// * `*void` -> `Pointer`
     /// * `void` -> `Void`
     pub(crate) fn get_ctype(&self, name: &str) -> String {
-        let mut n = name
-            .trim()
-            .replace("const ", "")
-            .replace("volatile ", "")
-            .replace("struct ", "");
-        let ty = FFI_TYPES_MAP.get(n.to_lowercase().as_str());
+        let mut n = Self::make_type_key(name);
+        let ty = self.ffi_types_map.get(n.to_lowercase().as_str());
         if let Some(cty) = ty {
             cty.ffi().to_owned()
         } else {
@@ -140,12 +137,8 @@ impl DartSourceWriter {
     /// * `Int64` -> `int`
     /// * `*CFString` -> `Pointer<CFString>`
     pub(crate) fn get_dart_type(&self, name: &str) -> String {
-        let mut n = name
-            .trim()
-            .replace("struct ", "")
-            .replace("volatile ", "")
-            .replace("const ", "");
-        let ty = FFI_TYPES_MAP.get(n.to_lowercase().as_str());
+        let mut n = Self::make_type_key(name);
+        let ty = self.ffi_types_map.get(n.to_lowercase().as_str());
         if let Some(cty) = ty {
             cty.dart().to_owned()
         } else {
@@ -174,18 +167,23 @@ impl DartSourceWriter {
         &self,
         name: &str,
     ) -> Option<String> {
-        let n = name
-            .trim()
-            .replace("struct ", "")
-            .replace("volatile ", "")
-            .replace("const ", "");
+        let n = Self::make_type_key(name);
         if n.ends_with('*') {
             None
-        } else if let Some(ty) = FFI_TYPES_MAP.get(n.to_lowercase().as_str()) {
+        } else if let Some(ty) =
+            self.ffi_types_map.get(n.to_lowercase().as_str())
+        {
             Some(ty.ffi().to_owned())
         } else {
             None
         }
+    }
+
+    fn make_type_key(name: &str) -> String {
+        name.trim()
+            .replace("struct ", "")
+            .replace("volatile ", "")
+            .replace("const ", "")
     }
 }
 
@@ -203,12 +201,14 @@ impl Write for DartSourceWriter {
 
 impl Display for DartSourceWriter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.lib_name.is_empty() {
+            writeln!(f, "/// bindings for `{}`\n", self.lib_name)?;
+        }
         for import in &self.imports {
             write!(f, "import '{}'", import.uri)?;
             if let Some(ref prefix) = import.prefix {
                 write!(f, " as {}", prefix)?;
             }
-            // TODO(@shekohex): support `show` and `hide`
             writeln!(f, ";")?;
         }
         writeln!(f)?;

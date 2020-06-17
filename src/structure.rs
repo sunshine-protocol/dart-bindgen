@@ -29,7 +29,6 @@ impl crate::Element for Struct {
     #[inline(always)]
     fn documentation(&self) -> Option<&str> { self.documentation.as_deref() }
 
-    // TODO(@shekohex): Split this into smaller functions for readabilty.
     fn generate_source(&self, w: &mut DartSourceWriter) -> io::Result<()> {
         let mut ffi = ImportedUri::new(String::from("package:ffi/ffi.dart"));
         ffi.with_prefix(String::from("ffi"));
@@ -43,7 +42,7 @@ impl crate::Element for Struct {
                 .join("\n");
             writeln!(w, "{}", docs)?;
         } else {
-            writeln!(w, "/// C function `{}`.", self.name)?;
+            writeln!(w, "/// C struct `{}`.", self.name)?;
         }
         writeln!(w, "class {} extends Struct {{", self.name)?;
         writeln!(w, "  ")?;

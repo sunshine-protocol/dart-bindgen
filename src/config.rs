@@ -4,12 +4,16 @@ use std::fmt;
 /// Represents the different methods to create a `DynamicLibrary`.
 #[derive(Debug, Clone)]
 pub enum DynamicLibraryCreationMode {
+    /// Creates a dynamic library representing the running executable.
     Executable,
+    /// Loads a dynamic library file with local visibility.
     Open(String),
+    /// Creates a dynamic library holding all global symbols.
     Process,
 }
 
 impl DynamicLibraryCreationMode {
+    /// a suger method for [`DynamicLibraryCreationMode::Open`]
     pub fn open(path: impl Into<String>) -> Self { Self::Open(path.into()) }
 }
 
@@ -23,6 +27,8 @@ pub struct DynamicLibraryPlatformConfig {
 }
 
 impl DynamicLibraryPlatformConfig {
+    /// Create [`DynamicLibraryPlatformConfig`] using the provided
+    /// [`DynamicLibraryCreationMode`]
     pub const fn new(mode: DynamicLibraryCreationMode) -> Self {
         Self {
             creation_mode: mode,
@@ -52,14 +58,26 @@ impl Display for DynamicLibraryPlatformConfig {
     }
 }
 
-/// Defines, how the dynamic library should be loaded on each of darts known
+/// Defines, how the dynamic library should be loaded on each of dart's known
 /// platforms.
 #[derive(Debug, Clone, Default)]
 pub struct DynamicLibraryConfig {
-    pub windows: Option<DynamicLibraryPlatformConfig>,
-    pub linux: Option<DynamicLibraryPlatformConfig>,
-    pub macos: Option<DynamicLibraryPlatformConfig>,
-    pub ios: Option<DynamicLibraryPlatformConfig>,
+    /// how to load the dynamic library when the operating system is a version
+    /// of `Android`.
     pub android: Option<DynamicLibraryPlatformConfig>,
+    /// how to load the dynamic library when the operating system is a version
+    /// `Fuchsia`.
     pub fuchsia: Option<DynamicLibraryPlatformConfig>,
+    /// how to load the dynamic library when the operating system is a version
+    /// `iOS`.
+    pub ios: Option<DynamicLibraryPlatformConfig>,
+    /// how to load the dynamic library when the operating system is a version
+    /// `Linux`.
+    pub linux: Option<DynamicLibraryPlatformConfig>,
+    /// how to load the dynamic library when the operating system is a version
+    /// `macOS`.
+    pub macos: Option<DynamicLibraryPlatformConfig>,
+    /// how to load the dynamic library when the operating system is a version
+    /// `Windows`.
+    pub windows: Option<DynamicLibraryPlatformConfig>,
 }

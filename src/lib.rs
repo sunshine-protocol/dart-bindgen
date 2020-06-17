@@ -1,5 +1,6 @@
 #![deny(
     unsafe_code,
+    missing_docs,
     missing_debug_implementations,
     missing_copy_implementations,
     elided_lifetimes_in_paths,
@@ -8,7 +9,35 @@
     clippy::missing_const_for_fn,
     intra_doc_link_resolution_failure
 )]
-
+#![doc(html_logo_url = "https://avatars0.githubusercontent.com/u/55122894")]
+//! ## Dart Bindgen
+//! Generate Dart FFI bindings to C Header file.
+//!
+//! ### Supported C Language Features
+//! - Functions
+//! - Function Pointer (aka `callback`)
+//! - Simple structs (NOTE: Nested structs is not supported yet, open a PR?)
+//!
+//! ## Example
+//! in your `build.rs`:
+//! ```rust,ignore
+//!  let config = DynamicLibraryConfig {
+//!       ios: DynamicLibraryCreationMode::Executable.into(),
+//!       android: DynamicLibraryCreationMode::open("libsimple.so").into(),
+//!       ..Default::default()
+//!   };
+//!   // load the c header file, with config and lib name
+//!   let codegen = Codegen::builder()
+//!       .with_src_header("simple-ffi/include/simple.h")
+//!       .with_lib_name("libsimple")
+//!       .with_config(config)
+//!       .build()?;
+//!   // generate the dart code and get the bindings back
+//!   let bindings = codegen.generate()?;
+//!   // write the bindings to your dart package
+//!   // and start using it to write your own high level abstraction.
+//!   bindings.write_to_file("simple/lib/ffi.dart")?;
+//! ```
 use clang::{Clang, Entity, EntityKind, Index, Type, TypeKind};
 use log::debug;
 use std::{
@@ -17,7 +46,7 @@ use std::{
     io::{self, Write},
     path::PathBuf,
 };
-
+/// Bindgens config for loading `DynamicLibrary` on each Platform.
 pub mod config;
 use config::DynamicLibraryConfig;
 
@@ -44,19 +73,20 @@ trait Element {
     /// Used to Write the Current Element to the Final Source File
     fn generate_source(&self, w: &mut DartSourceWriter) -> io::Result<()>;
 }
-
+/// Dart Code Generator
 pub struct Codegen {
-    output_file: PathBuf,
-    input_header: PathBuf,
+    src_header: PathBuf,
     lib_name: String,
     config: DynamicLibraryConfig,
     elements: HashMap<String, Box<dyn Element>>,
 }
 
 impl Codegen {
+    /// Create new [`Codegen`] using it's Builder
     pub fn builder() -> CodegenBuilder { CodegenBuilder::default() }
 
-    pub fn generate(mut self) -> Result<(), CodegenError> {
+    /// Generate the [`Bindings`]
+    pub fn generate(mut self) -> Result<Bindings, CodegenError> {
         debug!("Starting Codegen!");
         debug!("Building dsw");
         let mut dsw = Self::build_dsw();
@@ -64,11 +94,8 @@ impl Codegen {
         self.generate_open_dl(&mut dsw)?;
         let clang = Clang::new()?;
         let index = Index::new(&clang, true, false);
-        debug!(
-            "start parsing the C header file at {:?}.",
-            self.input_header
-        );
-        let parser = index.parser(self.input_header);
+        debug!("start parsing the C header file at {:?}.", self.src_header);
+        let parser = index.parser(self.src_header);
         let tu = parser.parse()?;
         debug!("Done Parsed the header file");
         let entity = tu.get_entity();
@@ -95,23 +122,15 @@ impl Codegen {
         for el in self.elements.values() {
             el.generate_source(&mut dsw)?;
         }
-
-        let mut out = fs::OpenOptions::new()
-            .read(false)
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(self.output_file)?;
-        debug!("Writing Dart Source File...");
-        write!(out, "{}", dsw)?;
         debug!("Done.");
-        Ok(())
+        Ok(Bindings::new(dsw))
     }
 
     fn generate_open_dl(
         &self,
         dsw: &mut DartSourceWriter,
     ) -> Result<(), CodegenError> {
+        dsw.set_lib_name(&self.lib_name);
         debug!("Generating Code for opening DynamicLibrary");
         writeln!(dsw, "final DynamicLibrary _dl = _open();")?;
         writeln!(dsw, "DynamicLibrary _open() {{")?;
@@ -184,21 +203,7 @@ impl Codegen {
                 .ok_or_else(|| CodegenError::UnknownParamType)?
                 .get_canonical_type();
             debug!("Param Type: {:?}", ty);
-            let ty = if ty.get_kind() == TypeKind::Pointer {
-                let pointee_type = ty
-                    .get_pointee_type()
-                    .ok_or_else(|| CodegenError::UnknownPointeeType)?;
-                let kind = pointee_type.get_kind();
-                if kind == TypeKind::FunctionPrototype
-                    || kind == TypeKind::FunctionNoPrototype
-                {
-                    Self::parse_fn_proto(pointee_type)?
-                } else {
-                    ty.get_display_name()
-                }
-            } else {
-                ty.get_display_name()
-            };
+            let ty = Self::parse_ty(ty)?;
             debug!("Param Type Display Name: {}", ty);
             params.push(Param::new(name, ty));
         }
@@ -247,25 +252,29 @@ impl Codegen {
                 .get_type()
                 .ok_or_else(|| CodegenError::UnknownParamType)?
                 .get_canonical_type();
-            let ty = if ty.get_kind() == TypeKind::Pointer {
-                let pointee_type = ty
-                    .get_pointee_type()
-                    .ok_or_else(|| CodegenError::UnknownPointeeType)?;
-                let kind = pointee_type.get_kind();
-                if kind == TypeKind::FunctionPrototype
-                    || kind == TypeKind::FunctionNoPrototype
-                {
-                    Self::parse_fn_proto(pointee_type)?
-                } else {
-                    ty.get_display_name()
-                }
-            } else {
-                ty.get_display_name()
-            };
+            let ty = Self::parse_ty(ty)?;
             fields.push(Field::new(name, ty));
         }
         let docs = entity.get_parsed_comment().map(|c| c.as_html());
         Ok(Struct::new(name, docs, fields))
+    }
+
+    fn parse_ty(ty: Type<'_>) -> Result<String, CodegenError> {
+        if ty.get_kind() == TypeKind::Pointer {
+            let pointee_type = ty
+                .get_pointee_type()
+                .ok_or_else(|| CodegenError::UnknownPointeeType)?;
+            let kind = pointee_type.get_kind();
+            if kind == TypeKind::FunctionPrototype
+                || kind == TypeKind::FunctionNoPrototype
+            {
+                Self::parse_fn_proto(pointee_type)
+            } else {
+                Ok(ty.get_display_name())
+            }
+        } else {
+            Ok(ty.get_display_name())
+        }
     }
 
     fn build_dsw() -> DartSourceWriter {
@@ -284,23 +293,46 @@ impl Codegen {
 impl fmt::Debug for Codegen {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Codegen")
-            .field("output_file", &self.output_file)
-            .field("input_file", &self.input_header)
+            .field("src_header", &self.src_header)
             .field("lib_name", &self.lib_name)
             .field("config", &self.config)
             .finish()
     }
 }
-
+/// The [`Codegen`] Builder
+///
+/// start by calling [`Codegen::builder()`]
 #[derive(Clone, Debug, Default)]
 pub struct CodegenBuilder {
-    output_file: PathBuf,
-    input_header: PathBuf,
+    src_header: PathBuf,
     lib_name: String,
     config: Option<DynamicLibraryConfig>,
 }
 
 impl CodegenBuilder {
+    /// The Input `C` header file
+    pub fn with_src_header(mut self, path: impl Into<PathBuf>) -> Self {
+        self.src_header = path.into();
+        self
+    }
+
+    /// The output lib name, for example `libfoo`
+    ///
+    /// used for docs
+    pub fn with_lib_name(mut self, name: impl Into<String>) -> Self {
+        self.lib_name = name.into();
+        self
+    }
+
+    /// Defines, how the dynamic library should be loaded on each of dart's
+    /// known platforms.
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn with_config(mut self, config: DynamicLibraryConfig) -> Self {
+        self.config = Some(config);
+        self
+    }
+
+    /// Consumes the builder and validate everyting, then create the [`Codegen`]
     pub fn build(self) -> Result<Codegen, CodegenError> {
         if self.lib_name.is_empty() {
             return Err(CodegenError::Builder(
@@ -311,33 +343,48 @@ impl CodegenBuilder {
         let config = self.config.ok_or_else(|| {
             CodegenError::Builder("Missing `DynamicLibraryConfig` did you forget to call `with_config` builder method?.")
         })?;
+
         Ok(Codegen {
-            output_file: self.output_file,
-            input_header: self.input_header,
+            src_header: self.src_header,
             lib_name: self.lib_name,
             config,
             elements: HashMap::new(),
         })
     }
+}
 
-    pub fn with_input_header_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.input_header = path.into();
-        self
+/// A bindings using `dart:ffi` that could be written.
+#[derive(Debug)]
+pub struct Bindings {
+    dsw: DartSourceWriter,
+}
+
+impl Bindings {
+    pub(crate) const fn new(dsw: DartSourceWriter) -> Self { Self { dsw } }
+
+    /// Write dart ffi bindings to a file
+    pub fn write_to_file(
+        &self,
+        path: impl Into<PathBuf>,
+    ) -> Result<(), CodegenError> {
+        let mut out = fs::OpenOptions::new()
+            .read(false)
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(path.into())?;
+        debug!("Writing Dart Source File...");
+        write!(out, "{}", self.dsw)?;
+        Ok(())
     }
 
-    pub fn with_output_dart_file(mut self, path: impl Into<PathBuf>) -> Self {
-        self.output_file = path.into();
-        self
-    }
-
-    pub fn with_lib_name(mut self, name: impl Into<String>) -> Self {
-        self.lib_name = name.into();
-        self
-    }
-
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn with_config(mut self, config: DynamicLibraryConfig) -> Self {
-        self.config = Some(config);
-        self
+    /// Write dart ffi bindings to anything that can we write into :D
+    ///
+    /// see also:
+    ///  * [`Bindings::write_to_file`]
+    pub fn write(&self, mut w: impl Write) -> Result<(), CodegenError> {
+        debug!("Writing Dart Source File...");
+        write!(w, "{}", self.dsw)?;
+        Ok(())
     }
 }

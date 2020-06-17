@@ -14,26 +14,6 @@ macro_rules! setup_logger {
 }
 
 #[test]
-fn test_simple_fn() {
-    setup_logger!();
-    let config = DynamicLibraryConfig {
-        ios: DynamicLibraryCreationMode::Executable.into(),
-        android: DynamicLibraryCreationMode::open("libsimple.so").into(),
-        windows: DynamicLibraryCreationMode::open("simple.dll").into(),
-        ..Default::default()
-    };
-    Codegen::builder()
-        .with_input_header_path("tests/headers/simple.h")
-        .with_output_dart_file("tests/out/simle.dart")
-        .with_lib_name("libsimple")
-        .with_config(config)
-        .build()
-        .unwrap()
-        .generate()
-        .unwrap();
-}
-
-#[test]
 fn test_keystore() {
     setup_logger!();
     let config = DynamicLibraryConfig {
@@ -42,13 +22,13 @@ fn test_keystore() {
         windows: DynamicLibraryCreationMode::open("keystore.dll").into(),
         ..Default::default()
     };
-    Codegen::builder()
-        .with_input_header_path("tests/headers/keystore.h")
-        .with_output_dart_file("tests/out/keystore.dart")
+    let bindings = Codegen::builder()
+        .with_src_header("tests/headers/keystore.h")
         .with_lib_name("libkeystore")
         .with_config(config)
         .build()
         .unwrap()
         .generate()
         .unwrap();
+    bindings.write_to_file("tests/out/simple.dart").unwrap();
 }

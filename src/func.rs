@@ -32,7 +32,6 @@ impl crate::Element for Func {
     #[inline(always)]
     fn documentation(&self) -> Option<&str> { self.documentation.as_deref() }
 
-    // TODO(@shekohex): Split this into smaller functions for readabilty.
     fn generate_source(&self, w: &mut DartSourceWriter) -> io::Result<()> {
         let typedef_c = format!("_{}_C", self.name);
         let typedef_dart = format!("_{}_Dart", self.name);
@@ -178,7 +177,7 @@ mod tests {
             None,
             vec![Param {
                 name: Some("a".to_owned()),
-                ty: "int64_t".to_owned(),
+                ty: "long".to_owned(),
             }],
             "void".to_owned(),
         );
@@ -195,7 +194,7 @@ mod tests {
             Some("Comment".to_string()),
             vec![Param {
                 name: Some("a".to_owned()),
-                ty: "int64_t".to_owned(),
+                ty: "long".to_owned(),
             }],
             "void".to_owned(),
         );
@@ -213,11 +212,11 @@ mod tests {
             vec![
                 Param {
                     name: None,
-                    ty: "int64_t".to_owned(),
+                    ty: "long".to_owned(),
                 },
                 Param {
                     name: None,
-                    ty: "int64_t".to_owned(),
+                    ty: "long".to_owned(),
                 },
             ],
             "void".to_owned(),
