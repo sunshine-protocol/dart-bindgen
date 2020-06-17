@@ -8,6 +8,11 @@
 
 <br />
 
+[![crates.io](https://img.shields.io/crates/v/dart-bindgen.svg)](https://crates.io/crates/dart-bindgen)
+[![Documentation](https://docs.rs/dart-bindgen/badge.svg)](https://docs.rs/dart-bindgen)
+[![GitHub license](https://img.shields.io/github/license/sunshine-protocol/dart-bindgen)](https://github.com/sunshine-protocol/dart-bindgen/blob/master/LICENSE)
+![Crates.io](https://img.shields.io/crates/d/dart-bindgen)
+
 ## Goals
 
 1. be able to generate a single `ffi.dart` file that should contain all the C header bindings.
