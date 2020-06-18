@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: install packages
-        run: sudo apt install -y build-essential pkg-config
+        run: sudo apt-get install build-essential pkg-config
       - uses: actions/checkout@v2
       - uses: actions-rs/audit-check@v1
         with:
