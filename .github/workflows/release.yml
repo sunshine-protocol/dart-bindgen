@@ -33,7 +33,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build project
-        run: cargo build --release
+        run: cargo build --release --features cli
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
