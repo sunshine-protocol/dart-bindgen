@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: install packages
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt install -y build-essential pkg-config
+        run: sudo apt install ibclang-dev
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build project

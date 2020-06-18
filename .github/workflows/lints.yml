@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: install packages
-        run: sudo apt-get install build-essential pkg-config
+        run: sudo apt-get install libclang-dev
 
       - name: Checkout sources
         uses: actions/checkout@v2
