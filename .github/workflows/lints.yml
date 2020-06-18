@@ -9,6 +9,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+      - name: install packages
+        run: sudo apt install -y build-essential pkg-config
 
       - name: Install nightly toolchain with clippy available
         uses: actions-rs/toolchain@v1
@@ -28,6 +30,8 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
+      - name: install packages
+        run: sudo apt install -y build-essential pkg-config
       - name: Checkout sources
         uses: actions/checkout@v2
 
@@ -49,6 +53,8 @@ jobs:
     name: Clippy + rustfmt
     runs-on: ubuntu-latest
     steps:
+      - name: install packages
+        run: sudo apt install -y build-essential pkg-config
       - name: Checkout sources
         uses: actions/checkout@v2
 

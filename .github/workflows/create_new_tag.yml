@@ -9,6 +9,8 @@ jobs:
     name: Bump version, create tag/release point
     runs-on: ubuntu-latest
     steps:
+      - name: install packages
+        run: sudo apt install -y build-essential pkg-config
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Bump version and push tag/create release point
