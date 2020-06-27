@@ -1,6 +1,6 @@
 [package]
 name = "dart-bindgen"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Sunshine Foundation Developers", "Shady Khalifa <shekohex@gmail.com>"]
 edition = "2018"
 description = "A tool for generating Dart FFI bindings to C Header file."
