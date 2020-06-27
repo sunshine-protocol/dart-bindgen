@@ -30,7 +30,7 @@ fn test_keystore() {
         .unwrap()
         .generate()
         .unwrap();
-    bindings.write_to_file("tests/out/simple.dart").unwrap();
+    bindings.write_to_file("tests/out/keystore.dart").unwrap();
 }
 
 #[test]
@@ -46,10 +46,10 @@ fn test_allo_isolate() {
         .with_src_header("tests/headers/keystore.h")
         .with_lib_name("libkeystore")
         .with_config(config)
-        .with_allo_isoate()
+        .with_allo_isolate()
         .build()
         .unwrap()
         .generate()
         .unwrap();
-    bindings.write_to_file("tests/out/simple.dart").unwrap();
+    bindings.write_to_file("tests/out/keystore2.dart").unwrap();
 }

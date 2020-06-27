@@ -50,7 +50,10 @@ impl DartSourceWriter {
         let mut map = HashMap::new();
         map.insert("void *", DartType::new("Pointer", "Pointer"));
         map.insert("void", DartType::new("Void", "void"));
-
+        map.insert(
+            "Dart_CObject",
+            DartType::new("Dart_CObject", "Dart_CObject"),
+        );
         map.insert(
             "char *",
             DartType::new("Pointer<ffi.Utf8>", "Pointer<ffi.Utf8>"),
