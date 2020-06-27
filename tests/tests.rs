@@ -51,5 +51,7 @@ fn test_allo_isolate() {
         .unwrap()
         .generate()
         .unwrap();
-    bindings.write_to_file("tests/out/keystore2.dart").unwrap();
+    bindings
+        .write_to_file("tests/out/allo-isolate.dart")
+        .unwrap();
 }
