@@ -38,29 +38,32 @@
 //!   // and start using it to write your own high level abstraction.
 //!   bindings.write_to_file("simple/lib/ffi.dart")?;
 //! ```
-use clang::{Clang, Entity, EntityKind, Index, Type, TypeKind};
-use log::debug;
 use std::{
     collections::HashMap,
     fmt, fs,
     io::{self, Write},
     path::PathBuf,
 };
-/// Bindgens config for loading `DynamicLibrary` on each Platform.
-pub mod config;
+
+use clang::{Clang, Entity, EntityKind, Index, Type, TypeKind};
+use log::debug;
+
 use config::DynamicLibraryConfig;
-
-mod dart_source_writer;
 use dart_source_writer::{DartSourceWriter, ImportedUri};
-
-mod errors;
 use errors::CodegenError;
-
-mod structure;
+use func::{Func, Param};
 use structure::{Field, Struct};
 
+/// Bindgens config for loading `DynamicLibrary` on each Platform.
+pub mod config;
+
+mod dart_source_writer;
+
+mod errors;
+
+mod structure;
+
 mod func;
-use func::{Func, Param};
 
 /// Abstract over Func, Struct and Global.
 trait Element {
@@ -73,10 +76,12 @@ trait Element {
     /// Used to Write the Current Element to the Final Source File
     fn generate_source(&self, w: &mut DartSourceWriter) -> io::Result<()>;
 }
+
 /// Dart Code Generator
 pub struct Codegen {
     src_header: PathBuf,
     lib_name: String,
+    allo_isolate: bool,
     config: DynamicLibraryConfig,
     elements: HashMap<String, Box<dyn Element>>,
 }
@@ -117,6 +122,23 @@ impl Codegen {
                 let s = Self::parse_struct(e)?;
                 self.elements.insert(s.name().to_owned(), Box::new(s));
             }
+        }
+        if self.allo_isolate {
+            // push new element
+            let params = vec![Param::new(
+                Some("ptr".to_string()),
+                "Pointer<NativeFunction<Int8 \
+            Function(Int64, Pointer<Dart_CObject>)>>"
+                    .to_string(),
+            )];
+            let func = Func::new(
+                "store_dart_post_cobject".to_string(),
+                None,
+                params,
+                "void".to_string(),
+            );
+            self.elements
+                .insert("store_dart_post_cobject".to_string(), Box::new(func));
         }
         debug!("Generating Dart Source...");
         for el in self.elements.values() {
@@ -299,6 +321,7 @@ impl fmt::Debug for Codegen {
             .finish()
     }
 }
+
 /// The [`Codegen`] Builder
 ///
 /// start by calling [`Codegen::builder()`]
@@ -306,6 +329,7 @@ impl fmt::Debug for Codegen {
 pub struct CodegenBuilder {
     src_header: PathBuf,
     lib_name: String,
+    allo_isolate: bool,
     config: Option<DynamicLibraryConfig>,
 }
 
@@ -336,7 +360,10 @@ impl CodegenBuilder {
     ///
     /// This allow dart-bindgen to add the code required by allo-isolate
     /// i.e `store_dart_post_cobject` fn
-    pub const fn with_allo_isoate(mut self) -> Self { self }
+    pub const fn with_allo_isolate(mut self) -> Self {
+        self.allo_isolate = true;
+        self
+    }
 
     /// Consumes the builder and validate everyting, then create the [`Codegen`]
     pub fn build(self) -> Result<Codegen, CodegenError> {
@@ -353,6 +380,7 @@ impl CodegenBuilder {
         Ok(Codegen {
             src_header: self.src_header,
             lib_name: self.lib_name,
+            allo_isolate: self.allo_isolate,
             config,
             elements: HashMap::new(),
         })
