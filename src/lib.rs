@@ -332,6 +332,12 @@ impl CodegenBuilder {
         self
     }
 
+    /// Integration with [`allo-isolate`](https://crates.io/crates/allo-isolate)
+    ///
+    /// This allow dart-bindgen to add the code required by allo-isolate
+    /// i.e `store_dart_post_cobject` fn
+    pub const fn with_allo_isoate(mut self) -> Self { self }
+
     /// Consumes the builder and validate everyting, then create the [`Codegen`]
     pub fn build(self) -> Result<Codegen, CodegenError> {
         if self.lib_name.is_empty() {

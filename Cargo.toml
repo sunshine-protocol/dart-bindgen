@@ -32,6 +32,5 @@ required-features = ["cli"]
 [features]
 deafult = []
 cli = ["argh", "pretty_env_logger", "anyhow"]
-
 [badges]
 maintenance = { status = "actively-developed" }

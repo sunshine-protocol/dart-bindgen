@@ -32,3 +32,24 @@ fn test_keystore() {
         .unwrap();
     bindings.write_to_file("tests/out/simple.dart").unwrap();
 }
+
+#[test]
+fn test_allo_isolate() {
+    setup_logger!();
+    let config = DynamicLibraryConfig {
+        ios: DynamicLibraryCreationMode::Executable.into(),
+        android: DynamicLibraryCreationMode::open("libkeystore.so").into(),
+        windows: DynamicLibraryCreationMode::open("keystore.dll").into(),
+        ..Default::default()
+    };
+    let bindings = Codegen::builder()
+        .with_src_header("tests/headers/keystore.h")
+        .with_lib_name("libkeystore")
+        .with_config(config)
+        .with_allo_isoate()
+        .build()
+        .unwrap()
+        .generate()
+        .unwrap();
+    bindings.write_to_file("tests/out/simple.dart").unwrap();
+}
