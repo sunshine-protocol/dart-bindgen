@@ -13,6 +13,10 @@ struct Args {
     /// for example if the input header is `foo.h` the output `foo.dart`
     #[argh(option, short = 'o')]
     output: Option<PathBuf>,
+    /// integrate with `allo-isolate` package and generate the binding for
+    /// `store_dart_post_cobject` function
+    #[argh(switch)]
+    allo_isolate: bool,
     /// the C library name (for docs)
     /// defaults for the name of the input header
     /// example if the input header is `foo.h` the name would be `libfoo`
@@ -102,11 +106,16 @@ fn main() -> Result<()> {
             .ok_or_else(|| anyhow!("Could't make the libname"))?,
     };
 
-    let codegen = Codegen::builder()
+    let mut builder = Codegen::builder()
         .with_lib_name(name)
         .with_src_header(args.input)
-        .with_config(config)
-        .build()?;
+        .with_config(config);
+
+    if args.allo_isolate {
+        builder = builder.with_allo_isolate();
+    }
+
+    let codegen = builder.build()?;
 
     let bindings = codegen.generate()?;
     bindings.write_to_file(output_path)?;

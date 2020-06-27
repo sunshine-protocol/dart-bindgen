@@ -56,14 +56,10 @@ use structure::{Field, Struct};
 
 /// Bindgens config for loading `DynamicLibrary` on each Platform.
 pub mod config;
-
 mod dart_source_writer;
-
 mod errors;
-
-mod structure;
-
 mod func;
+mod structure;
 
 /// Abstract over Func, Struct and Global.
 trait Element {
@@ -124,24 +120,28 @@ impl Codegen {
             }
         }
         if self.allo_isolate {
-            // push new element
-            let params = vec![Param::new(
-                Some("ptr".to_string()),
-                "Pointer<NativeFunction<Int8 \
-            Function(Int64, Pointer<Dart_CObject>)>>"
-                    .to_string(),
-            )];
             let func = Func::new(
                 "store_dart_post_cobject".to_string(),
                 None,
-                params,
+                vec![Param::new(
+                    Some("ptr".to_string()),
+                    "Pointer<NativeFunction<Int8 \
+                Function(Int64, Pointer<Dart_CObject>)>>"
+                        .to_string(),
+                )],
                 "void".to_string(),
             );
+            // insert new element
             self.elements
                 .insert("store_dart_post_cobject".to_string(), Box::new(func));
         }
         debug!("Generating Dart Source...");
-        for el in self.elements.values() {
+        // trying to sort the elements to avoid useless changes in git for
+        // example since HashMap is not `Ord`
+        let mut elements: Vec<_> = self.elements.values().collect();
+        elements.sort_by_key(|k| k.name());
+
+        for el in elements {
             el.generate_source(&mut dsw)?;
         }
         debug!("Done.");

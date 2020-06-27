@@ -242,3 +242,17 @@ typedef _phrase_destroy_C = Void Function(
 typedef _phrase_destroy_Dart = void Function(
   Pointer<ffi.Utf8> phrase,
 );
+
+/// C function `store_dart_post_cobject`.
+void store_dart_post_cobject(
+  Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr,
+) {
+  _store_dart_post_cobject(ptr);
+}
+final _store_dart_post_cobject_Dart _store_dart_post_cobject = _dl.lookupFunction<_store_dart_post_cobject_C, _store_dart_post_cobject_Dart>('store_dart_post_cobject');
+typedef _store_dart_post_cobject_C = Void Function(
+  Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr,
+);
+typedef _store_dart_post_cobject_Dart = void Function(
+  Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr,
+);
