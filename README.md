@@ -42,7 +42,7 @@ Writing a High-Level Abstractions and idiomatic Dart Code for the FFI bindgens, 
 
 ## Install
 
-You could install the CLI from [github releases]() or you could also use cargo
+You could install the CLI from [github releases](https://github.com/sunshine-protocol/dart-bindgen/releases) or you could also use cargo
 
 ```bash
 $ cargo install --force dart-bindgen --features cli
