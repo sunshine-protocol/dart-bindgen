@@ -40,6 +40,14 @@
 
 Writing a High-Level Abstractions and idiomatic Dart Code for the FFI bindgens, we will leave that as a homework for the user :).
 
+## Install
+
+You could install the CLI from [github releases]() or you could also use cargo
+
+```bash
+$ cargo install --force dart-bindgen --features cli
+```
+
 ## Safety
 
 This crate uses `#![deny(unsafe_code)]` to ensure everything is implemented in
