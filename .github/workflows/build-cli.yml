@@ -1,4 +1,4 @@
-name: Build CLI
+name: Build CLI Static
 
 on:
   push:
@@ -33,11 +33,11 @@ jobs:
           cached: ${{ steps.cache-llvm.outputs.cache-hit }}
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Build CLI (Dynamic)
+      - name: Build CLI (Static)
         uses: actions-rs/cargo@v1
         env:
           LIBCLANG_PATH: ${{ runner.temp }}/llvm/10.0/lib
           LLVM_CONFIG_PATH: ${{ runner.temp }}/llvm/10.0/bin/llvm-config
         with:
           command: build
-          args: --release --features cli
+          args: --release --features cli-static
