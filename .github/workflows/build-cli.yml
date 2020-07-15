@@ -23,8 +23,8 @@ jobs:
         id: cache-llvm
         uses: actions/cache@v2
         with:
-        path: ${{ runner.temp }}/llvm/10.0
-        key: ${{ matrix.os }}-llvm-10.0
+          path: ${{ runner.temp }}/llvm/10.0
+          key: ${{ matrix.os }}-llvm-10.0
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
         with:
