@@ -3,8 +3,8 @@ name: Build CLI Static
 on:
   push:
 jobs:
-  release:
-    name: Build and Release
+  static-build:
+    name: Static Build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -19,14 +19,14 @@ jobs:
             artifact_name: dart-bindgen.exe
             asset_name: dart-bindgen-windows-amd64.exe
     steps:
-      - name: Cache LLVM and Clang
-        id: cache-llvm
-        uses: actions/cache@v2
-        with:
-          path: ${{ runner.temp }}/llvm/10.0
-          key: ${{ matrix.os }}-llvm-10.0
-      - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+      # - name: Cache LLVM and Clang
+      #   id: cache-llvm
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: ${{ runner.temp }}/llvm/10.0
+      #     key: ${{ matrix.os }}-llvm-10.0
+      - name: Compile LLVM and Clang
+        uses: shekohex/compile-llvm-action@v0.1.3-alpha
         with:
           version: '10.0'
           directory: ${{ runner.temp }}/llvm/10.0
