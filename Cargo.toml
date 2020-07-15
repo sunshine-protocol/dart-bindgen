@@ -32,5 +32,8 @@ required-features = ["cli"]
 [features]
 deafult = []
 cli = ["argh", "pretty_env_logger", "anyhow"]
+static = ["clang/static"]
+cli-static = ["cli", "static"]
+
 [badges]
 maintenance = { status = "actively-developed" }
