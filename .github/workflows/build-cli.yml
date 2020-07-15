@@ -1,9 +1,7 @@
-name: Build and upload binaries to release
+name: Build CLI
 
 on:
-  repository_dispatch:
-    types: [tag-created]
-
+  push:
 jobs:
   release:
     name: Build and Release
@@ -43,10 +41,3 @@ jobs:
         with:
           command: build
           args: --release --features cli
-      - name: Upload binary to release
-        uses: svenstaro/upload-release-action@v1-release
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/release/${{ matrix.artifact_name }}
-          asset_name: ${{ matrix.asset_name }}
-          tag: ${{ github.event.client_payload.new_version }}
