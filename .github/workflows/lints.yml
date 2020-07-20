@@ -7,7 +7,7 @@ jobs:
     name: Clippy + rustfmt
     runs-on: ubuntu-latest
     steps:
-     - name: Cache LLVM and Clang
+      - name: Cache LLVM and Clang
         id: cache-llvm
         uses: actions/cache@v2
         with:
