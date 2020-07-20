@@ -10,8 +10,8 @@
 
 <div align="center">
   <a href="https://github.com/sunshine-protocol/dart-bindgen">
-    <img src="https://github.com/sunshine-protocol/dart-bindgen/workflows/Nightly%20lints/badge.svg"
-      alt="Lints" />
+    <img src="https://github.com/sunshine-protocol/dart-bindgen/workflows/Snapshot%20Testing/badge.svg"
+      alt="Snapshot Testing" />
   </a>
    <a href="https://github.com/sunshine-protocol/dart-bindgen">
     <img src="https://github.com/sunshine-protocol/dart-bindgen/workflows/Security%20audit/badge.svg"
@@ -42,7 +42,27 @@ Writing a High-Level Abstractions and idiomatic Dart Code for the FFI bindgens, 
 
 ## Install
 
-You could install the CLI from [github releases](https://github.com/sunshine-protocol/dart-bindgen/releases) or you could also use cargo
+Make sure you have installed the dependencies:
+
+1. LLVM and clang
+
+#### on macOS:
+
+```
+brew install llvm
+```
+
+#### on Windows:
+
+Download a prebuild from [here](https://releases.llvm.org/)
+
+#### on Linux:
+
+you know what to do ;)
+
+---
+
+and then you could install the CLI from [github releases](https://github.com/sunshine-protocol/dart-bindgen/releases) or you could also use cargo to build it from source:
 
 ```bash
 $ cargo install --force dart-bindgen --features cli
