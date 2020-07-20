@@ -1,13 +1,13 @@
 on: [push, pull_request]
 
-name: Nightly lints
+name: Snapshot Testing
 
 jobs:
-  combo:
-    name: Clippy + rustfmt
+  tests:
+    name: Snapshot Testing
     runs-on: ubuntu-latest
     steps:
-     - name: Cache LLVM and Clang
+      - name: Cache LLVM and Clang
         id: cache-llvm
         uses: actions/cache@v2
         with:
@@ -21,23 +21,13 @@ jobs:
           cached: ${{ steps.cache-llvm.outputs.cache-hit }}
       - name: Checkout sources
         uses: actions/checkout@v2
-
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
-          override: true
-          components: rustfmt, clippy
-
-      - name: Run cargo fmt
+          override: false
+      - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
-          command: fmt
-          args: --all -- --check
-
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+          command: test --verbose
