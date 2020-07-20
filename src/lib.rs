@@ -122,18 +122,18 @@ impl Codegen {
         if self.allo_isolate {
             let func = Func::new(
                 "store_dart_post_cobject".to_string(),
-                None,
+                Some(String::from("Binding to `allo-isolate` crate")),
                 vec![Param::new(
                     Some("ptr".to_string()),
-                    "Pointer<NativeFunction<Int8 \
-                Function(Int64, Pointer<Dart_CObject>)>>"
-                        .to_string(),
+                    String::from("Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>>"),
                 )],
-                "void".to_string(),
+                String::from("void"),
             );
             // insert new element
-            self.elements
-                .insert("store_dart_post_cobject".to_string(), Box::new(func));
+            self.elements.insert(
+                String::from("store_dart_post_cobject"),
+                Box::new(func),
+            );
         }
         debug!("Generating Dart Source...");
         // trying to sort the elements to avoid useless changes in git for
@@ -282,14 +282,13 @@ impl Codegen {
     }
 
     fn parse_ty(ty: Type<'_>) -> Result<String, CodegenError> {
-        if ty.get_kind() == TypeKind::Pointer {
+        use TypeKind::*;
+        if ty.get_kind() == Pointer {
             let pointee_type = ty
                 .get_pointee_type()
                 .ok_or_else(|| CodegenError::UnknownPointeeType)?;
             let kind = pointee_type.get_kind();
-            if kind == TypeKind::FunctionPrototype
-                || kind == TypeKind::FunctionNoPrototype
-            {
+            if kind == FunctionPrototype || kind == FunctionNoPrototype {
                 Self::parse_fn_proto(pointee_type)
             } else {
                 Ok(ty.get_display_name())
@@ -416,7 +415,7 @@ impl Bindings {
     ///
     /// see also:
     ///  * [`Bindings::write_to_file`]
-    pub fn write(&self, mut w: impl Write) -> Result<(), CodegenError> {
+    pub fn write(&self, w: &mut impl Write) -> Result<(), CodegenError> {
         debug!("Writing Dart Source File...");
         write!(w, "{}", self.dsw)?;
         Ok(())

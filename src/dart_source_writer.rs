@@ -6,7 +6,7 @@ use std::{
 };
 
 /// Describes an imported Dart package.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub(crate) struct ImportedUri {
     uri: String,
     prefix: Option<String>,
@@ -204,10 +204,13 @@ impl Write for DartSourceWriter {
 
 impl Display for DartSourceWriter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use std::iter::FromIterator;
         if !self.lib_name.is_empty() {
             writeln!(f, "/// bindings for `{}`\n", self.lib_name)?;
         }
-        for import in &self.imports {
+        let mut imports: Vec<&ImportedUri> = Vec::from_iter(&self.imports);
+        imports.sort();
+        for import in imports {
             write!(f, "import '{}'", import.uri)?;
             if let Some(ref prefix) = import.prefix {
                 write!(f, " as {}", prefix)?;
