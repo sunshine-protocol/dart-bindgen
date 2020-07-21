@@ -155,6 +155,8 @@ impl Codegen {
         dsw.set_lib_name(&self.lib_name);
         debug!("Generating Code for opening DynamicLibrary");
         writeln!(dsw, "final DynamicLibrary _dl = _open();")?;
+        writeln!(dsw, "/// Reference to the Dynamic Library, it should be only used for low-level access")?;
+        writeln!(dsw, "final DynamicLibrary dl = _dl;")?;
         writeln!(dsw, "DynamicLibrary _open() {{")?;
         if let Some(ref config) = self.config.windows {
             debug!("Generating _open Code for Windows");
