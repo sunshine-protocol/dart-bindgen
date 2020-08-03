@@ -58,6 +58,10 @@ impl crate::Element for Struct {
         writeln!(w, "  static Pointer<{}> allocate() {{", self.name)?;
         writeln!(w, "    return ffi.allocate<{}>();", self.name)?;
         writeln!(w, "  }}\n")?;
+        writeln!(w)?;
+        writeln!(w, "  static {} from(int ptr) {{", self.name)?;
+        writeln!(w, "    return Pointer<{}>.fromAddress(ptr).ref;", self.name)?;
+        writeln!(w, "  }}\n")?;
         writeln!(w, "}}")?;
         Ok(())
     }
