@@ -254,7 +254,7 @@ impl Codegen {
         write!(
             dsw,
             "Pointer<NativeFunction<{} Function({})>>",
-            dsw.get_dart_type(&return_ty),
+            dsw.get_ctype(&return_ty),
             params.join(", ")
         )?;
         Ok(dsw.to_string())
