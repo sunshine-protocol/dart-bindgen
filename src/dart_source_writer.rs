@@ -78,15 +78,15 @@ impl DartSourceWriter {
         map.insert("long int", DartType::new("Int64", "int"));
         map.insert("signed long", DartType::new("Int64", "int"));
         map.insert("signed long int", DartType::new("Int64", "int"));
-        map.insert("unsigned long", DartType::new("Uint64", "int"));
-        map.insert("unsigned long int", DartType::new("Uint64", "int"));
+        map.insert("unsigned long", DartType::new("Uint64", "BigInt"));
+        map.insert("unsigned long int", DartType::new("Uint64", "BigInt"));
 
         map.insert("long long", DartType::new("Int64", "int"));
         map.insert("long long int", DartType::new("Int64", "int"));
         map.insert("signed long long", DartType::new("Int64", "int"));
         map.insert("signed long long int", DartType::new("Int64", "int"));
-        map.insert("unsigned long long", DartType::new("Uint64", "int"));
-        map.insert("unsigned long long int", DartType::new("Uint64", "int"));
+        map.insert("unsigned long long", DartType::new("Uint64", "BigInt"));
+        map.insert("unsigned long long int", DartType::new("Uint64", "BigInt"));
 
         map.insert("float", DartType::new("Float", "double"));
         map.insert("double", DartType::new("Double", "double"));
