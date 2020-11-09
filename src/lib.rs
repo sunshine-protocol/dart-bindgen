@@ -50,6 +50,7 @@ use log::debug;
 
 use config::DynamicLibraryConfig;
 use dart_source_writer::{DartSourceWriter, ImportedUri};
+use enumeration::{Enum, EnumField};
 use errors::CodegenError;
 use func::{Func, Param};
 use structure::{Field, Struct};
@@ -57,6 +58,7 @@ use structure::{Field, Struct};
 /// Bindgens config for loading `DynamicLibrary` on each Platform.
 pub mod config;
 mod dart_source_writer;
+mod enumeration;
 mod errors;
 mod func;
 mod structure;
@@ -103,20 +105,80 @@ impl Codegen {
         let entities = entity
             .get_children()
             .into_iter()
-            .filter(|e| !e.is_in_system_header());
+            .filter(|e| !e.is_in_system_header())
+            .peekable();
+
         for e in entities {
             let kind = e.get_kind();
-            if kind == EntityKind::FunctionDecl {
-                debug!("Got Function: {:?}", e);
-                // handle functions
-                let func = Self::parse_function(e)?;
-                self.elements.insert(func.name().to_owned(), Box::new(func));
-            }
+            debug!("Entity: {:?}", e);
 
-            if kind == EntityKind::StructDecl {
-                debug!("Got Struct: {:?}", e);
-                let s = Self::parse_struct(e)?;
-                self.elements.insert(s.name().to_owned(), Box::new(s));
+            match kind {
+                EntityKind::FunctionDecl => {
+                    debug!("Got Function: {:?}", e);
+                    // handle functions
+                    let func = Self::parse_function(e)?;
+                    self.elements
+                        .insert(func.name().to_owned(), Box::new(func));
+                },
+                EntityKind::StructDecl => {
+                    debug!("Got Struct: {:?}", e);
+
+                    match Self::parse_struct(e, None) {
+                        // if its unnamed in this case and not anonymous, then
+                        // its ok, as it will be discovered by the typedef
+                        // parser
+                        Err(CodegenError::UnnamedStruct) => Ok(()),
+                        Err(err) => Err(err),
+                        Ok(s) => {
+                            self.elements
+                                .insert(s.name().to_owned(), Box::new(s));
+
+                            Ok(())
+                        },
+                    }?;
+                },
+                EntityKind::EnumDecl => {
+                    debug!("Got Enum: {:?}", e);
+
+                    match Self::parse_enum(e, None) {
+                        // if its unnamed in this case and not anonymous, then
+                        // its ok, as it will be discovered by the typedef
+                        // parser
+                        Err(CodegenError::UnnamedEnum) => Ok(()),
+                        Err(err) => Err(err),
+                        Ok(s) => {
+                            self.elements
+                                .insert(s.name().to_owned(), Box::new(s));
+
+                            Ok(())
+                        },
+                    }?;
+                },
+                EntityKind::TypedefDecl => {
+                    debug!("Got Typedef: {:?}", e);
+
+                    for child in e.get_children() {
+                        match child.get_kind() {
+                            EntityKind::StructDecl => {
+                                debug!("Got struct in Typedef: {:?}", child);
+                                let s =
+                                    Self::parse_struct(child, e.get_name())?;
+
+                                self.elements
+                                    .insert(s.name().to_owned(), Box::new(s));
+                            },
+                            EntityKind::EnumDecl => {
+                                debug!("Got enum in Typedef: {:?}", child);
+                                let s = Self::parse_enum(child, e.get_name())?;
+
+                                self.elements
+                                    .insert(s.name().to_owned(), Box::new(s));
+                            },
+                            _ => {},
+                        }
+                    }
+                },
+                _ => {},
             }
         }
         if self.allo_isolate {
@@ -260,10 +322,18 @@ impl Codegen {
         Ok(dsw.to_string())
     }
 
-    fn parse_struct(entity: Entity<'_>) -> Result<impl Element, CodegenError> {
-        let name = entity
-            .get_name()
-            .ok_or_else(|| CodegenError::UnnamedStruct)?;
+    fn parse_struct(
+        entity: Entity<'_>,
+        name: Option<String>,
+    ) -> Result<impl Element, CodegenError> {
+        if entity.is_anonymous() {
+            return Err(CodegenError::AnonymousEntity);
+        }
+
+        let name = name
+            .or(entity.get_name())
+            .ok_or(CodegenError::UnnamedStruct)?;
+
         debug!("Struct: {}", name);
         let children = entity.get_children();
         let mut fields = Vec::with_capacity(children.capacity());
@@ -272,6 +342,7 @@ impl Codegen {
             let name = child
                 .get_name()
                 .ok_or_else(|| CodegenError::UnnamedStructField)?;
+
             let ty = child
                 .get_type()
                 .ok_or_else(|| CodegenError::UnknownParamType)?
@@ -281,6 +352,38 @@ impl Codegen {
         }
         let docs = entity.get_parsed_comment().map(|c| c.as_html());
         Ok(Struct::new(name, docs, fields))
+    }
+
+    fn parse_enum(
+        entity: Entity<'_>,
+        name: Option<String>,
+    ) -> Result<impl Element, CodegenError> {
+        if entity.is_anonymous() {
+            return Err(CodegenError::AnonymousEntity);
+        }
+
+        let name = name
+            .or(entity.get_name())
+            .ok_or(CodegenError::UnnamedEnum)?;
+
+        debug!("Enum: {}", name);
+        let children = entity.get_children();
+        let mut fields = Vec::with_capacity(children.capacity());
+
+        for child in children {
+            debug!("Enum field: {:?}", child);
+            let name =
+                child.get_name().ok_or(CodegenError::UnnamedEnumField)?;
+
+            let value = child
+                .get_enum_constant_value()
+                .ok_or(CodegenError::UnknownEnumFieldConstantValue)?
+                .1;
+
+            fields.push(EnumField::new(name, value));
+        }
+        let docs = entity.get_parsed_comment().map(|c| c.as_html());
+        Ok(Enum::new(name, docs, fields))
     }
 
     fn parse_ty(ty: Type<'_>) -> Result<String, CodegenError> {
