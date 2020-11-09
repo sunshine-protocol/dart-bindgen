@@ -7,7 +7,7 @@
     rust_2018_idioms,
     clippy::fallible_impl_from,
     clippy::missing_const_for_fn,
-    intra_doc_link_resolution_failure
+    broken_intra_doc_links
 )]
 #![doc(html_logo_url = "https://avatars0.githubusercontent.com/u/55122894")]
 //! ## Dart Bindgen
@@ -256,9 +256,7 @@ impl Codegen {
     fn parse_function(
         entity: Entity<'_>,
     ) -> Result<impl Element, CodegenError> {
-        let name = entity
-            .get_name()
-            .ok_or_else(|| CodegenError::UnnamedFunction)?;
+        let name = entity.get_name().ok_or(CodegenError::UnnamedFunction)?;
         debug!("Function: {}", name);
         let params = match entity.get_arguments() {
             Some(entities) => Self::parse_fn_params(entities)?,
@@ -269,7 +267,7 @@ impl Codegen {
         debug!("Function Docs: {:?}", docs);
         let return_ty = entity
             .get_result_type()
-            .ok_or_else(|| CodegenError::UnknownFunctionReturnType)?
+            .ok_or(CodegenError::UnknownFunctionReturnType)?
             .get_canonical_type()
             .get_display_name();
         debug!("Function Return Type: {}", return_ty);
@@ -286,7 +284,7 @@ impl Codegen {
             debug!("Param Name: {:?}", name);
             let ty = e
                 .get_type()
-                .ok_or_else(|| CodegenError::UnknownParamType)?
+                .ok_or(CodegenError::UnknownParamType)?
                 .get_canonical_type();
             debug!("Param Type: {:?}", ty);
             let ty = Self::parse_ty(ty)?;
@@ -302,7 +300,7 @@ impl Codegen {
         let return_ty = ty
             .get_canonical_type()
             .get_result_type()
-            .ok_or_else(|| CodegenError::UnknownFunctionReturnType)?
+            .ok_or(CodegenError::UnknownFunctionReturnType)?
             .get_canonical_type()
             .get_display_name();
         let params = match ty.get_argument_types() {
@@ -331,7 +329,7 @@ impl Codegen {
         }
 
         let name = name
-            .or(entity.get_name())
+            .or_else(|| entity.get_name())
             .ok_or(CodegenError::UnnamedStruct)?;
 
         debug!("Struct: {}", name);
@@ -339,13 +337,12 @@ impl Codegen {
         let mut fields = Vec::with_capacity(children.capacity());
 
         for child in children {
-            let name = child
-                .get_name()
-                .ok_or_else(|| CodegenError::UnnamedStructField)?;
+            let name =
+                child.get_name().ok_or(CodegenError::UnnamedStructField)?;
 
             let ty = child
                 .get_type()
-                .ok_or_else(|| CodegenError::UnknownParamType)?
+                .ok_or(CodegenError::UnknownParamType)?
                 .get_canonical_type();
             let ty = Self::parse_ty(ty)?;
             fields.push(Field::new(name, ty));
@@ -363,7 +360,7 @@ impl Codegen {
         }
 
         let name = name
-            .or(entity.get_name())
+            .or_else(|| entity.get_name())
             .ok_or(CodegenError::UnnamedEnum)?;
 
         debug!("Enum: {}", name);
@@ -391,7 +388,7 @@ impl Codegen {
         if ty.get_kind() == Pointer {
             let pointee_type = ty
                 .get_pointee_type()
-                .ok_or_else(|| CodegenError::UnknownPointeeType)?;
+                .ok_or(CodegenError::UnknownPointeeType)?;
             let kind = pointee_type.get_kind();
             if kind == FunctionPrototype || kind == FunctionNoPrototype {
                 Self::parse_fn_proto(pointee_type)
@@ -477,9 +474,9 @@ impl CodegenBuilder {
             ));
         }
 
-        let config = self.config.ok_or_else(|| {
+        let config = self.config.ok_or(
             CodegenError::Builder("Missing `DynamicLibraryConfig` did you forget to call `with_config` builder method?.")
-        })?;
+        )?;
 
         Ok(Codegen {
             src_header: self.src_header,
