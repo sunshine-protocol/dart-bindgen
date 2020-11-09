@@ -1,0 +1,49 @@
+---
+source: tests/enum.rs
+expression: out
+---
+/// bindings for `libenum`
+
+import 'dart:ffi';
+import 'dart:io';
+import 'package:ffi/ffi.dart' as ffi;
+
+// ignore_for_file: unused_import, camel_case_types, non_constant_identifier_names
+final DynamicLibrary _dl = _open();
+/// Reference to the Dynamic Library, it should be only used for low-level access
+final DynamicLibrary dl = _dl;
+DynamicLibrary _open() {
+  if (Platform.isWindows) return DynamicLibrary.open('enum.dll');
+  if (Platform.isAndroid) return DynamicLibrary.open('libenum.so');
+  if (Platform.isIOS) return DynamicLibrary.executable();
+  throw UnsupportedError('This platform is not supported.');
+}
+
+/// C enum `DefaultEnum`.
+abstract class DefaultEnum {
+  static const int A = 0;
+  static const int B = 1;
+  static const int C = 2;
+  static const int D = 3;
+  static const int E = 4;
+  static const int F = 5;
+}
+
+/// C enum `NormalEnum`.
+abstract class NormalEnum {
+  static const int NormalValueA = 0;
+  static const int NormalValueB = 1;
+  static const int NormalValueC = 3;
+  static const int NormalValueD = 4;
+}
+
+/// C enum `ValuedEnum`.
+abstract class ValuedEnum {
+  static const int G = 0;
+  static const int H = 20;
+  static const int J = 55;
+  static const int K = 56;
+  static const int L = 57;
+  static const int M = 58;
+}
+

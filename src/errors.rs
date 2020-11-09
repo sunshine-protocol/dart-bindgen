@@ -26,6 +26,14 @@ pub enum CodegenError {
     UnnamedStructField,
     #[error("Unknown type for struct field `a` at ")]
     UnknownStructFieldType,
+    #[error("Found Enum without name at ")]
+    UnnamedEnum,
+    #[error("Unknown name for enum field `a` at ")]
+    UnnamedEnumField,
+    #[error("Unknown constant value for enum field `a` at ")]
+    UnknownEnumFieldConstantValue,
+    #[error("An anonymous entity found at ")]
+    AnonymousEntity,
 }
 
 impl From<String> for CodegenError {
