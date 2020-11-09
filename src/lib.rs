@@ -6,8 +6,7 @@
     elided_lifetimes_in_paths,
     rust_2018_idioms,
     clippy::fallible_impl_from,
-    clippy::missing_const_for_fn,
-    broken_intra_doc_links
+    clippy::missing_const_for_fn
 )]
 #![doc(html_logo_url = "https://avatars0.githubusercontent.com/u/55122894")]
 //! ## Dart Bindgen
