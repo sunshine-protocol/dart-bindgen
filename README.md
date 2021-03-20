@@ -8,6 +8,10 @@
 
 <br />
 
+<h3 align="center">⚠️ This crate is deprecated and 🚧 unmaintained 🚧 for now, please prefer <a href="https://github.com/dart-lang/ffigen">ffigen</a> from the dart team.</h3>
+
+<br />
+
 <div align="center">
   <a href="https://github.com/sunshine-protocol/dart-bindgen">
     <img src="https://github.com/sunshine-protocol/dart-bindgen/workflows/Snapshot%20Testing/badge.svg"
